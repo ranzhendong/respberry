@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/mapstructure"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
@@ -13,6 +17,13 @@ var (
 )
 
 type serverHandler struct{}
+
+type RobotResponse struct {
+	MsgType string
+	Text    struct {
+		Context string
+	}
+}
 
 func init() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -45,6 +56,39 @@ func (serverHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func Root(w http.ResponseWriter, r *http.Request) {
+	var (
+		R RobotResponse
+	)
 	log.Println(r.Body)
+	_ = R.initializeBody(r.Body)
+	log.Println("R.MsgType", R.MsgType)
+	log.Println("R.Text", R.Text)
 
+}
+
+//InitializeBody : config initialize
+func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
+	var (
+		body    []byte
+		jsonObj interface{}
+	)
+
+	// if the body exist
+	if body, err = ioutil.ReadAll(rBody); err != nil {
+		err = fmt.Errorf("Read Body ERR: %v ", err)
+		return
+	}
+
+	// if the body can be turn to interface
+	if err = json.Unmarshal(body, &jsonObj); err != nil {
+		err = fmt.Errorf("Unmarshal Body ERR: %v", err)
+		return
+	}
+
+	//turn map to struck
+	if err = mapstructure.Decode(jsonObj, &R); err != nil {
+		return
+	}
+
+	return
 }
