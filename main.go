@@ -41,6 +41,7 @@ func main() {
 		WriteTimeout: time.Duration(10) * time.Second,
 	}
 
+	log.Println("Start RespBerry HTTPServer")
 	if err = server.ListenAndServe(); err != nil {
 		log.Printf(fmt.Sprintf("%v", err))
 	}
