@@ -25,6 +25,23 @@ type RobotResponse struct {
 	}
 }
 
+//钉钉消息提示数据结构
+//text文本提醒
+type DingText struct {
+	MsgType string `json:"msgtype"`
+	Text    Text   `json:"text"`
+	//At      At     `json:"at"`
+}
+
+type Text struct {
+	Content string `json:"content"`
+}
+
+type At struct {
+	AtMobiles [1]string `json:"atMobiles"`
+	IsAtAll   string    `json:"isAtAll"`
+}
+
 func init() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
@@ -62,9 +79,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	)
 	log.Println(r.Body)
 	_ = R.initializeBody(r.Body)
-	log.Println("R.MsgType", R.MsgType)
-	log.Println("R.Text.Content", R.Text.Content)
-
+	R.response(w)
 }
 
 //InitializeBody : config initialize
@@ -86,10 +101,6 @@ func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
 		return
 	}
 
-	log.Println(body)
-	log.Println(jsonObj)
-	log.Println(jsonObj)
-
 	//turn map to struck
 	if err = mapstructure.Decode(jsonObj, &R); err != nil {
 		log.Println(R)
@@ -97,4 +108,28 @@ func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
 	}
 
 	return
+}
+
+func (R *RobotResponse) response(w http.ResponseWriter) {
+	var b []byte
+	log.Println("R.MsgType", R.MsgType)
+	log.Println("R.Text.Content", R.Text.Content)
+
+	content := "RespBerry HTTPServer"
+	var d = DingText{
+		"text",
+		Text{
+			content,
+		},
+	}
+	if b, err = json.Marshal(d); err == nil {
+		log.Printf("[DingAlert] Send TO DingTalk %v ", string(b))
+	}
+
+	//// 忽略证书校验
+	//	//tr := &http.Transport{
+	//	//	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	//	//}
+
+	_, err = io.WriteString(w, string(b))
 }
