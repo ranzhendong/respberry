@@ -21,7 +21,7 @@ type serverHandler struct{}
 type RobotResponse struct {
 	MsgType string `json:"msgtype"`
 	Text    struct {
-		Context string `json:"content"`
+		Content string `json:"content"`
 	}
 }
 
@@ -63,7 +63,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.Body)
 	_ = R.initializeBody(r.Body)
 	log.Println("R.MsgType", R.MsgType)
-	log.Println("R.Text.Context", R.Text)
+	log.Println("R.Text.Content", R.Text.Content)
 
 }
 
@@ -88,10 +88,10 @@ func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
 
 	log.Println(body)
 	log.Println(jsonObj)
-	log.Println(&jsonObj)
+	log.Println(jsonObj)
 
 	//turn map to struck
-	if err = mapstructure.Decode(&jsonObj, &R); err != nil {
+	if err = mapstructure.Decode(jsonObj, &R); err != nil {
 		log.Println(R)
 		return
 	}
