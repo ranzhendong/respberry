@@ -63,7 +63,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.Body)
 	_ = R.initializeBody(r.Body)
 	log.Println("R.MsgType", R.MsgType)
-	log.Println("R.Text", R.Text)
+	log.Println("R.Text.Context", R.Text.Context)
 
 }
 
