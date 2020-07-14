@@ -19,9 +19,9 @@ var (
 type serverHandler struct{}
 
 type RobotResponse struct {
-	MsgType string
+	MsgType string `json:"msgtype"`
 	Text    struct {
-		Context string
+		Context string `json:"content"`
 	}
 }
 
@@ -63,7 +63,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.Body)
 	_ = R.initializeBody(r.Body)
 	log.Println("R.MsgType", R.MsgType)
-	log.Println("R.Text.Context", R.Text.Context)
+	log.Println("R.Text.Context", R.Text)
 
 }
 
