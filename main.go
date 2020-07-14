@@ -86,8 +86,13 @@ func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
 		return
 	}
 
+	log.Println(body)
+	log.Println(jsonObj)
+	log.Println(&jsonObj)
+
 	//turn map to struck
-	if err = mapstructure.Decode(jsonObj, &R); err != nil {
+	if err = mapstructure.Decode(&jsonObj, &R); err != nil {
+		log.Println(R)
 		return
 	}
 
