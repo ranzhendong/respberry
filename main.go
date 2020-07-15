@@ -3,26 +3,40 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
+const (
+	Title           = "[惊喜] RespBerry HTTP Server [惊喜]"
+	EMQxAds         = "emqx.ranzhendong.com.cn:1883"
+	EMQxTopic       = "respberry"
+	EMQxSetClientID = "respberry"
+)
+
 var (
-	mux              = make(map[string]func(http.ResponseWriter, *http.Request))
+	f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		log.Printf("TOPIC: %s\n", msg.Topic())
+		log.Printf("MSG: %s\n", msg.Payload())
+	}
+	mux              = make(map[string]func(http.ResponseWriter, *http.Request, *mqtt.Client))
 	muxResponseEMQ   = make(map[string]int)
 	muxResponseEmoji [10]string
 	err              error
 )
 
-const Title = "[惊喜] RespBerry HTTP Server [惊喜]"
-
-type serverHandler struct{}
+type serverHandler struct {
+	Connect mqtt.Client
+}
 
 type RobotResponse struct {
 	MsgType string `json:"msgtype"`
@@ -30,16 +44,15 @@ type RobotResponse struct {
 		Content string `json:"content"`
 	}
 	EMQ struct {
-		Ext    bool
-		CttKey string
-		CttVal int
+		Connect mqtt.Client
+		Ext     bool
+		CttKey  string
+		CttVal  int
 	}
 	ResponseEmoji   string
 	ResponseContent string
 }
 
-//钉钉消息提示数据结构
-//text文本提醒
 type DingText struct {
 	MsgType string `json:"msgtype"`
 	Text    Text   `json:"text"`
@@ -81,10 +94,14 @@ func init() {
 }
 
 func main() {
+
 	//server config
 	server := http.Server{
-		Addr:         "0.0.0.0:8080",
-		Handler:      &serverHandler{},
+		Addr: "0.0.0.0:8080",
+		Handler: &serverHandler{
+			//创建emqX连接
+			emqXConnect(),
+		},
 		ReadTimeout:  time.Duration(10) * time.Second,
 		WriteTimeout: time.Duration(10) * time.Second,
 	}
@@ -96,18 +113,20 @@ func main() {
 }
 
 //server route handler
-func (serverHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s serverHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h, ok := mux[r.URL.String()]; ok {
-		h(w, r)
+		h(w, r, &s.Connect)
 		return
 	}
 	log.Printf(fmt.Sprintf("%v", r.URL.String()))
 }
 
-func Root(w http.ResponseWriter, r *http.Request) {
+func Root(w http.ResponseWriter, r *http.Request, c *mqtt.Client) {
 	var (
 		RR RobotResponse
 	)
+
+	RR.EMQ.Connect = *c
 
 	_ = RR.initializeBody(r.Body)
 
@@ -161,6 +180,7 @@ func (R *RobotResponse) responseContent() {
 	} else if R.EMQ.Ext {
 		R.ResponseContent = Title + "\n" +
 			"【" + R.EMQ.CttKey + "】选项已经生效啦" + R.ResponseEmoji
+		R.emqXPublish()
 	} else {
 		R.ResponseContent = Title + "\n" +
 			"没有【" + R.EMQ.CttKey + "】选项啦" + R.ResponseEmoji
@@ -198,8 +218,31 @@ func (R *RobotResponse) pipLine() {
 
 }
 
-func emqX() {
+func emqXConnect() mqtt.Client {
+	//mqtt.DEBUG = log.New(os.Stdout, "", 0)
+	mqtt.ERROR = log.New(os.Stdout, "", 0)
+	opts := mqtt.NewClientOptions().AddBroker("tcp://" + EMQxAds).SetClientID(EMQxSetClientID)
 
+	opts.SetKeepAlive(60 * time.Second)
+	// Set the message callback handler
+	opts.SetDefaultPublishHandler(f)
+	opts.SetPingTimeout(1 * time.Second)
+
+	c := mqtt.NewClient(opts)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
+
+	return c
+}
+
+func (R *RobotResponse) emqXPublish() {
+	// Publish message
+	c := R.EMQ.Connect
+
+	// The payload must be a string that needs to be converted using the Strconv.itoa method
+	token := c.Publish(EMQxTopic, 0, false, strconv.Itoa(R.EMQ.CttVal))
+	token.Wait()
 }
 
 func (R *RobotResponse) dingTalk(w http.ResponseWriter) {
