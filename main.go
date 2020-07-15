@@ -150,19 +150,19 @@ func (R *RobotResponse) responseContent() {
 	log.Println("R.Text.Content", R.Text.Content)
 
 	if R.EMQ.Ext && R.EMQ.CttKey == "HELPME" {
-		R.ResponseContent = Title + "\r\n" + R.ResponseEmoji +
-			"\r\n" + "提供如下功能" +
-			"\r\n" + "1.开灯" +
-			"\r\n" + "2.关灯" +
-			"\r\n" + "3.开启监控" +
-			"\r\n" + "4.关闭监控" +
-			"\r\n" + "5.拍照" +
-			"\r\n" + "HELPME"
+		R.ResponseContent = Title + "\n" + R.ResponseEmoji +
+			"提供如下功能" +
+			"\n" + "1.开灯" +
+			"\n" + "2.关灯" +
+			"\n" + "3.开启监控" +
+			"\n" + "4.关闭监控" +
+			"\n" + "5.拍照" +
+			"\n" + "HELPME"
 	} else if R.EMQ.Ext {
-		R.ResponseContent = Title + "\r\n" +
+		R.ResponseContent = Title + "\n" +
 			"【" + R.EMQ.CttKey + "】选项已经生效啦" + R.ResponseEmoji
 	} else {
-		R.ResponseContent = Title + "\r\n" +
+		R.ResponseContent = Title + "\n" +
 			"没有【" + R.EMQ.CttKey + "】选项啦" + R.ResponseEmoji
 	}
 }
