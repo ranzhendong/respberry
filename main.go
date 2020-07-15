@@ -62,13 +62,13 @@ func init() {
 
 	//set Emoji for Response
 	muxResponseEmoji[0] = "[捧脸]"
-	muxResponseEmoji[0] = "[凄凉]"
-	muxResponseEmoji[0] = "[发呆]"
-	muxResponseEmoji[0] = "[灵感]"
-	muxResponseEmoji[0] = "[迷惑]"
-	muxResponseEmoji[0] = "[天使]"
-	muxResponseEmoji[0] = "[无聊]"
-	muxResponseEmoji[0] = "[亲亲]"
+	muxResponseEmoji[1] = "[凄凉]"
+	muxResponseEmoji[2] = "[发呆]"
+	muxResponseEmoji[3] = "[灵感]"
+	muxResponseEmoji[4] = "[迷惑]"
+	muxResponseEmoji[5] = "[天使]"
+	muxResponseEmoji[6] = "[无聊]"
+	muxResponseEmoji[7] = "[亲亲]"
 }
 
 func main() {
@@ -101,8 +101,9 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	)
 	_ = RR.initializeBody(r.Body)
 
-	RR.response(w)
 	RR.pipLine()
+
+	RR.response(w)
 }
 
 //InitializeBody : config initialize
@@ -153,7 +154,9 @@ func (R *RobotResponse) response(w http.ResponseWriter) {
 
 func (R *RobotResponse) pipLine() {
 
-	var ctt = R.Text.Content
+	var (
+		ctt = R.Text.Content
+	)
 
 	//judge if exist
 	if _, ok := muxEMQContent[ctt]; ok {
@@ -164,10 +167,12 @@ func (R *RobotResponse) pipLine() {
 	}
 
 	//Take a random number
-	randomEmoji := rand.Intn(len(muxResponseEmoji))
+	randomEmoji := rand.Intn(len(muxResponseEmoji) - 1)
+	log.Println(randomEmoji)
 
 	//Take a random Emoji
 	R.ResponseEmoji = muxResponseEmoji[randomEmoji]
+	log.Println(R)
 
 }
 
