@@ -9,15 +9,18 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"regexp"
 	"time"
 )
 
 var (
 	mux              = make(map[string]func(http.ResponseWriter, *http.Request))
-	muxEMQContent    = make(map[string]int)
+	muxResponseEMQ   = make(map[string]int)
 	muxResponseEmoji [10]string
 	err              error
 )
+
+const Title = "[惊喜] RespBerry HTTP Server [惊喜]"
 
 type serverHandler struct{}
 
@@ -26,8 +29,13 @@ type RobotResponse struct {
 	Text    struct {
 		Content string `json:"content"`
 	}
-	EMQCtt        int
-	ResponseEmoji string
+	EMQ struct {
+		Ext    bool
+		CttKey string
+		CttVal int
+	}
+	ResponseEmoji   string
+	ResponseContent string
 }
 
 //钉钉消息提示数据结构
@@ -53,12 +61,12 @@ func init() {
 	//set route
 	mux["/"] = Root
 
-	//set flag
-	muxEMQContent["开灯"] = 1
-	muxEMQContent["关灯"] = 2
-	muxEMQContent["开启监控"] = 3
-	muxEMQContent["关闭监控"] = 4
-	muxEMQContent["拍照"] = 5
+	//set flag for emqX
+	muxResponseEMQ["开灯"] = 1
+	muxResponseEMQ["关灯"] = 2
+	muxResponseEMQ["开启监控"] = 3
+	muxResponseEMQ["关闭监控"] = 4
+	muxResponseEMQ["拍照"] = 5
 
 	//set Emoji for Response
 	muxResponseEmoji[0] = "[捧脸]"
@@ -99,11 +107,14 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	var (
 		RR RobotResponse
 	)
+
 	_ = RR.initializeBody(r.Body)
 
 	RR.pipLine()
 
-	RR.response(w)
+	RR.responseContent()
+
+	RR.dingTalk(w)
 }
 
 //InitializeBody : config initialize
@@ -133,23 +144,26 @@ func (R *RobotResponse) initializeBody(rBody io.Reader) (err error) {
 	return
 }
 
-func (R *RobotResponse) response(w http.ResponseWriter) {
-	var b []byte
+func (R *RobotResponse) responseContent() {
 	log.Println("R.MsgType", R.MsgType)
 	log.Println("R.Text.Content", R.Text.Content)
 
-	content := "RespBerry HTTPServer" + R.ResponseEmoji
-	var d = DingText{
-		"text",
-		Text{
-			content,
-		},
+	if R.EMQ.Ext && R.Text.Content == "HELPME" {
+		R.ResponseContent = Title + "/n" + R.ResponseEmoji +
+			"提供如下功能" +
+			"1.开灯" +
+			"2.关灯" +
+			"3.开启监控" +
+			"4.关闭监控" +
+			"5.拍照" +
+			"HELPME"
+	} else if R.EMQ.Ext {
+		R.ResponseContent = Title + "/n" +
+			"选项 " + R.EMQ.CttKey + " 已经生效啦" + R.ResponseEmoji
+	} else {
+		R.ResponseContent = Title + "/n" +
+			"哎呀，没有 " + R.EMQ.CttKey + " 选项啦" + R.ResponseEmoji
 	}
-	if b, err = json.Marshal(d); err == nil {
-		log.Printf("[DingAlert] Send TO DingTalk %v ", string(b))
-	}
-
-	_, err = io.WriteString(w, string(b))
 }
 
 func (R *RobotResponse) pipLine() {
@@ -159,11 +173,18 @@ func (R *RobotResponse) pipLine() {
 	)
 
 	//judge if exist
-	if _, ok := muxEMQContent[ctt]; ok {
-		R.EMQCtt = muxEMQContent[ctt]
-		log.Println("[pipLine] Get ", ctt)
-	} else {
-		log.Println("[pipLine] No This Key")
+	for k, v := range muxResponseEMQ {
+		reg := regexp.MustCompile(k)
+		if MEId := reg.FindString(ctt); MEId != "" {
+			R.EMQ.Ext = true
+			R.EMQ.CttKey = k
+			R.EMQ.CttVal = v
+			log.Println("[pipLine] Get ", ctt)
+		}
+	}
+
+	if R.EMQ.CttKey == "" {
+		R.EMQ.CttKey = R.Text.Content
 	}
 
 	//Take a random number
@@ -178,4 +199,20 @@ func (R *RobotResponse) pipLine() {
 
 func emqX() {
 
+}
+
+func (R *RobotResponse) dingTalk(w http.ResponseWriter) {
+	var b []byte
+
+	var d = DingText{
+		"text",
+		Text{
+			R.ResponseContent,
+		},
+	}
+	if b, err = json.Marshal(d); err == nil {
+		log.Printf("[DingAlert] Send TO DingTalk %v ", string(b))
+	}
+
+	_, err = io.WriteString(w, string(b))
 }
