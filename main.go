@@ -10,7 +10,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -220,7 +219,7 @@ func (R *RobotResponse) pipLine() {
 
 func emqXConnect() mqtt.Client {
 	//mqtt.DEBUG = log.New(os.Stdout, "", 0)
-	mqtt.ERROR = log.New(os.Stdout, "", 0)
+	//mqtt.ERROR = log.New(os.Stdout, "", 0)
 	opts := mqtt.NewClientOptions().AddBroker("tcp://" + EMQxAds).SetClientID(EMQxSetClientID)
 
 	opts.SetKeepAlive(60 * time.Second)
